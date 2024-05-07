@@ -297,8 +297,23 @@ Vector<Vector<Point2>> Geometry2D::_polypath_offset(const Vector<Point2> &p_poly
 		polypath[i] = PointD(p_polypath[i].x, p_polypath[i].y);
 	}
 
+
+//  inline PathsD InflatePaths(const PathsD& paths, double delta,
+//    JoinType jt, EndType et, double miter_limit = 2.0,
+ //   int precision = 2, double arc_tolerance = 0.0)
+	int error_code = 0;
+	const double scale = std::pow(10, PRECISION);
+	ClipperOffset clip_offset(2.0, 0.0);
+	clip_offset.PreserveCollinear(false);
+	clip_offset.AddPath(ScalePath<int64_t,double>(polypath, scale, error_code), jt, et);
+	if (error_code) {
+		return {};
+	}
+	Paths64 solution;
+	clip_offset.Execute(p_delta * scale, solution);
+	PathsD paths = ScalePaths<double, int64_t>(solution, 1 / scale, error_code);
 	// Inflate/deflate.
-	PathsD paths = InflatePaths({ polypath }, p_delta, jt, et, 2.0, PRECISION, 0.0);
+	//PathsD paths = InflatePaths({ polypath }, p_delta, jt, et, 2.0, PRECISION, 0.0);
 	// Here the miter_limit = 2.0 and arc_tolerance = 0.0 are Clipper2 defaults,
 	// and the PRECISION is used to scale points up internally, to attain the desired precision.
 
@@ -313,7 +328,10 @@ Vector<Vector<Point2>> Geometry2D::_polypath_offset(const Vector<Point2> &p_poly
 			real_t y = static_cast<real_t>(path[j].y);
 			if (j == 0 || polypath2[polypath2.size() - 1].x != x || polypath2[polypath2.size() - 1].y != y) {
 				polypath2.push_back(Point2(x, y));
+			} else if(j != 0) {
+				printf("Equal point detected\n");
 			}
+
 		}
 		polypaths.push_back(polypath2);
 	}
